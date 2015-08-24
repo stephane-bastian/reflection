@@ -343,6 +343,14 @@ public class TestTypes {
 	}
 
 	@Test
+	public void isArray() {
+		assertTrue( Types.isArray(Integer[].class));
+		assertTrue( !Types.isArray(Integer.class));
+		assertTrue( Types.isArray(new TypeToken<List<? extends Integer>[]>() {}.type()));
+		assertTrue( !Types.isArray(new TypeToken<List<? extends Integer>>() {}.type()));
+	}
+
+	@Test
 	public void isArrayOf() {
 		assertTrue( Types.isArrayOf(Integer[].class, Number.class));
 		assertTrue( !Types.isArrayOf(Integer[].class, String.class));
