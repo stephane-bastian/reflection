@@ -370,4 +370,11 @@ public class TestTypes {
 
 	}
 
+	@Test
+	public void getComponentType() {
+		assertTrue( Types.getComponentType(new TypeToken<String[]>() {}.type()).equals(String.class));
+		assertTrue( Types.getComponentType(new TypeToken<List<?>[]>() {}.type()).equals(new TypeToken<List<?>>(){}.type()));
+		assertTrue( Types.getComponentType(new TypeToken<List<?>>() {}.type())==null);
+	}
+	
 }

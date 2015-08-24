@@ -214,6 +214,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * 
@@ -222,6 +224,27 @@ import java.util.Set;
  */
 public class Types {
 
+	private final static Logger logger = Logger.getLogger(Types.class.getName());
+
+	public final static Type getComponentType(Type type) {
+		Objects.requireNonNull(type);
+	
+		if (type instanceof GenericArrayType) {
+			return ((GenericArrayType) type).getGenericComponentType();
+		}
+		else if (type instanceof Class) {
+			Class<?> cls = (Class<?>) type;
+			return cls.getComponentType();
+		}
+		return null;
+	}
+	
+	public static Type[] getParameterTypes(Type type) {
+		List<Type> result = new ArrayList<>();
+		getParameterTypes(type, result);
+		return result.toArray(new Type[result.size()]);
+	}
+		
 	private static void getParameterTypes(Type type, List<Type> result) {
 	    if (type instanceof Class) {
 	    	Class<?> cls = (Class<?>) type;
@@ -268,24 +291,41 @@ public class Types {
 	    }
 	}
 	
-	public static Type[] getParameterTypes(Type type) {
-		List<Type> result = new ArrayList<>();
-		getParameterTypes(type, result);
-		return result.toArray(new Type[result.size()]);
-	}
-		
-	public final static boolean isArrayOf(Type type, Type expectedParameterType) {
-		if (type instanceof Class) {
-			Class<?> cls = (Class<?>) type;
-			return cls.isArray() && isAssignable(cls.getComponentType(), expectedParameterType);
+	public final static Class<?> getRawClass(Type type) {
+		Objects.requireNonNull(type);
+
+		Class<?> result = null;
+		if (type instanceof Class<?>) {
+			result = (Class<?>) type;
+		}
+		else if (type instanceof ParameterizedType) {
+			ParameterizedType parameterizedType = (ParameterizedType) type;
+			result = getRawClass(parameterizedType.getRawType());
 		}
 		else if (type instanceof GenericArrayType) {
-			GenericArrayType genericArrayType = (GenericArrayType) type;
-			return isAssignable(genericArrayType.getGenericComponentType(), expectedParameterType);
+			Type componentType = ((GenericArrayType) type).getGenericComponentType();
+			Class<?> componentClass = getRawClass(componentType);
+		    if (componentClass != null ) {
+//		    	Object tmpArray = Array.newInstance(componentClass, 0);
+//		        result = tmpArray.getClass();
+		    	result = componentClass;
+		    }
+		    else {
+		    	result = Object[].class;
+		    }
 		}
-		return false;
+		return result;
+	}
+
+	public final static boolean isArray(Type type) {
+		return getComponentType(type)!=null;
 	}
 	
+	public final static boolean isArrayOf(Type type, Type expectedParameterType) {
+		Type componentType = getComponentType(type);
+		return componentType!=null ? isAssignable(componentType, expectedParameterType) : false;
+	}
+
 	/**
 	 * returns whether the source type can be converted to the specified target type
 	 * @param source
@@ -396,12 +436,26 @@ public class Types {
 		return false;
 	}
 
+	public final static boolean isCollection(Class<?> cls) {
+		if (cls!=null) {
+			return Collection.class.isAssignableFrom(cls);
+		}
+		return false;
+	}
+
 	public final static boolean isCollectionOf(Type type, Type expectedItemType) {
 		return isParameterizedType(type, Collection.class, expectedItemType);
 	}
 
 	public final static boolean isListOf(Type type, Type expectedItemType) {
 		return isParameterizedType(type, List.class, expectedItemType);
+	}
+
+	public final static boolean isMap(Class<?> cls) {
+		if (cls!=null) {
+			return Map.class.isAssignableFrom(cls);
+		}
+		return false;
 	}
 
 	public final static boolean isParameterizedType(Type type, Type expectedRawType, Type expectedParameterType) {
@@ -449,74 +503,27 @@ public class Types {
 		}
 		return result;
 	}
-
+	
 	public final static boolean isSetOf(Type type, Type expectedItemType) {
 		return isParameterizedType(type, Set.class, expectedItemType);
 	}
 
+	@SuppressWarnings("unchecked")
+	public final static <T> T newInstance(Type type) {
+		try {
+			Class<?> rawClass = getRawClass(type);
+			if (rawClass!=null) {
+				return (T) rawClass.newInstance();
+			}
+		}
+		catch (Throwable t) {
+			logger.log(Level.WARNING, "could not instantiate " + type.toString(), t);
+		}
+		return null;
+	}
+
 	public static Class<?> toClass(Type expectedType) {
-	    if (expectedType instanceof Class)
-	        return (Class<?>) expectedType;
-	    return null;
-	}
-
-	public final static Type getComponentType(Type type) {
-		Objects.requireNonNull(type);
-	
-		Type result = null;
-		if (type instanceof ParameterizedType) {
-			ParameterizedType parameterizedType = (ParameterizedType) type;
-			if (parameterizedType.getActualTypeArguments().length==1) {
-				result = parameterizedType.getActualTypeArguments()[0];
-			}
-		}
-		else if (type instanceof GenericArrayType) {
-			result = ((GenericArrayType) type).getGenericComponentType();
-		}
-		return result;
-	}
-
-	public final static Class<?> getRawClass(Type type) {
-			if (type==null) {
-				System.out.println("xx");
-			}
-			Objects.requireNonNull(type);
-	
-			Class<?> result = null;
-			if (type instanceof Class<?>) {
-				result = (Class<?>) type;
-			}
-			else if (type instanceof ParameterizedType) {
-				ParameterizedType parameterizedType = (ParameterizedType) type;
-				result = getRawClass(parameterizedType.getRawType());
-			}
-			else if (type instanceof GenericArrayType) {
-				Type componentType = ((GenericArrayType) type).getGenericComponentType();
-				Class<?> componentClass = getRawClass(componentType);
-			    if (componentClass != null ) {
-	//		    	Object tmpArray = Array.newInstance(componentClass, 0);
-	//		        result = tmpArray.getClass();
-			    	result = componentClass;
-			    }
-			    else {
-			    	result = Object[].class;
-			    }
-			}
-			return result;
-		}
-
-	public final static boolean isCollection(Class<?> cls) {
-		if (cls!=null) {
-			return Collection.class.isAssignableFrom(cls);
-		}
-		return false;
-	}
-
-	public final static boolean isMap(Class<?> cls) {
-		if (cls!=null) {
-			return Map.class.isAssignableFrom(cls);
-		}
-		return false;
+	    return expectedType!=null && expectedType instanceof Class ? (Class<?>) expectedType : null;
 	}
 
 }
