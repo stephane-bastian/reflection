@@ -210,6 +210,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.Test;
@@ -382,7 +383,19 @@ public class TestTypes {
 	public void getComponentType() {
 		assertTrue( Types.getComponentType(new TypeToken<String[]>() {}.type()).equals(String.class));
 		assertTrue( Types.getComponentType(new TypeToken<List<?>[]>() {}.type()).equals(new TypeToken<List<?>>(){}.type()));
-		assertTrue( Types.getComponentType(new TypeToken<List<?>>() {}.type())==null);
+		assertTrue( Types.getComponentType(new TypeToken<Collection<Integer>>() {}.type()).equals(Integer.class));
+		assertTrue( Types.getComponentType(new TypeToken<List<Integer>>() {}.type()).equals(Integer.class));
+		assertTrue( Types.getComponentType(new TypeToken<Set<Integer>>() {}.type()).equals(Integer.class));
+	}
+	
+	@Test
+	public void isParameterizedType() {
+		assertTrue( Types.isParameterizedType(new TypeToken<Collection<String>>() {}.type(), Collection.class, String.class));
+		assertTrue( !Types.isParameterizedType(new TypeToken<Collection<String>>() {}.type(), Collection.class, Integer.class));
+		assertTrue( Types.isParameterizedType(new TypeToken<Map<String, Integer>>() {}.type(), Map.class, String.class, Integer.class));
+		assertTrue( Types.isParameterizedType(new TypeToken<Map<String, Integer>>() {}.type(), Map.class, String.class, Number.class));
+		assertTrue( !Types.isParameterizedType(String.class, Collection.class, String.class));
+		
 	}
 	
 }

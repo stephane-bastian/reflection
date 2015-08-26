@@ -232,6 +232,12 @@ public class Types {
 		if (type instanceof GenericArrayType) {
 			return ((GenericArrayType) type).getGenericComponentType();
 		}
+		else if (type instanceof ParameterizedType) {
+			ParameterizedType parameterizedType = (ParameterizedType) type;
+			if (parameterizedType.getActualTypeArguments().length==1 && isAssignable(parameterizedType.getRawType(), Collection.class)) {
+				return parameterizedType.getActualTypeArguments()[0];
+			}
+		}
 		else if (type instanceof Class) {
 			Class<?> cls = (Class<?>) type;
 			return cls.getComponentType();
@@ -306,8 +312,6 @@ public class Types {
 			Type componentType = ((GenericArrayType) type).getGenericComponentType();
 			Class<?> componentClass = getRawClass(componentType);
 		    if (componentClass != null ) {
-//		    	Object tmpArray = Array.newInstance(componentClass, 0);
-//		        result = tmpArray.getClass();
 		    	result = componentClass;
 		    }
 		    else {
@@ -318,7 +322,7 @@ public class Types {
 	}
 
 	public final static boolean isArray(Type type) {
-		return getComponentType(type)!=null;
+		return getComponentType(type)!=null && !(type instanceof ParameterizedType);
 	}
 	
 	public final static boolean isArrayOf(Type type, Type expectedParameterType) {
@@ -458,13 +462,21 @@ public class Types {
 		return false;
 	}
 
-	public final static boolean isParameterizedType(Type type, Type expectedRawType, Type expectedParameterType) {
+	public final static boolean isParameterizedType(Type type, Type expectedRawType, Type... expectedParameterTypes) {
 		if (type instanceof ParameterizedType) {
 	    	ParameterizedType parameterizedType = (ParameterizedType) type;
-	    	if (parameterizedType.getActualTypeArguments().length==1) {
-	        	if (isAssignable(parameterizedType.getRawType(), expectedRawType) && isAssignable(parameterizedType.getActualTypeArguments()[0], expectedParameterType)) {
-	            	return true;
+	    	if (parameterizedType.getActualTypeArguments().length==expectedParameterTypes.length) {
+	        	if (!isAssignable(parameterizedType.getRawType(), expectedRawType)) {
+	        		return false;
 	        	}
+	        	int argumentIndex=0;
+	    		for (Type typeArgument: parameterizedType.getActualTypeArguments()) {
+		        	if (!isAssignable(typeArgument, expectedParameterTypes[argumentIndex])) {
+		            	return false;
+		        	}
+		        	argumentIndex++;
+	    		}
+	    		return true;
 	    	}
 		}
 		return false;
